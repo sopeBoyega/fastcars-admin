@@ -132,12 +132,55 @@ def add_brand(name: str, country: str, featured: bool) -> None:
 
 def add_car(payload: dict[str, Any]) -> None:
     data = store()
-    payload["id"] = f"car-{100 + len(data['cars']) + 1}"
-    payload["created_at"] = datetime.now()
-    data["cars"].append(payload)
+    brand_name = next(
+        (brand["name"] for brand in data["brands"] if brand.get("id") == payload.get("brand_id")),
+        payload.get("brand", "Unknown"),
+    )
+    normalized = dict(payload)
+    normalized["id"] = f"car-{100 + len(data['cars']) + 1}"
+    normalized["brand"] = brand_name
+    normalized["featured"] = normalized.get("featured", False)
+    normalized["image_url"] = (normalized.get("images") or [""])[0]
+    normalized["created_at"] = datetime.now()
+    data["cars"].append(normalized)
     for brand in data["brands"]:
-        if brand["name"] == payload["brand"]:
+        if brand["name"] == brand_name:
             brand["vehicle_count"] += 1
+            break
+
+
+def update_car_record(car_id: str, payload: dict[str, Any]) -> None:
+    data = store()
+    for car in data["cars"]:
+        if car["id"] != car_id:
+            continue
+        previous_brand = car.get("brand")
+        brand_name = next(
+            (brand["name"] for brand in data["brands"] if brand.get("id") == payload.get("brand_id")),
+            car.get("brand", "Unknown"),
+        )
+        car.update(payload)
+        car["brand"] = brand_name
+        if payload.get("images"):
+            car["image_url"] = payload["images"][0]
+        if previous_brand != brand_name:
+            for brand in data["brands"]:
+                if brand["name"] == previous_brand:
+                    brand["vehicle_count"] = max(0, brand["vehicle_count"] - 1)
+                if brand["name"] == brand_name:
+                    brand["vehicle_count"] += 1
+        return
+
+
+def delete_car_record(car_id: str) -> None:
+    data = store()
+    removed_car = next((car for car in data["cars"] if car["id"] == car_id), None)
+    data["cars"] = [car for car in data["cars"] if car["id"] != car_id]
+    if not removed_car:
+        return
+    for brand in data["brands"]:
+        if brand["name"] == removed_car.get("brand"):
+            brand["vehicle_count"] = max(0, brand["vehicle_count"] - 1)
             break
 
 

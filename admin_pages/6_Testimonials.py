@@ -6,7 +6,7 @@ from shared.admin_ui import boot, page_header, require_admin_access
 
 
 boot("Testimonials")
-require_admin_access()
+require_admin_access("testimonials")
 
 page_header(
     "Testimonial moderation",
@@ -31,14 +31,14 @@ st.markdown("#### Review message")
 st.info(selected["message"])
 
 actions = st.columns(2)
-if actions[0].button("Approve for public display", use_container_width=True):
+if actions[0].button("Approve for public display", width="stretch"):
     try:
         set_testimonial_active(selected.get("id", selected.get("_id")), True)
         st.success("Testimonial is now active.")
         st.rerun()
     except Exception as exc:
         st.error(f"Unable to update testimonial: {exc}")
-if actions[1].button("Keep hidden", use_container_width=True):
+if actions[1].button("Keep hidden", width="stretch"):
     try:
         set_testimonial_active(selected.get("id", selected.get("_id")), False)
         st.success("Testimonial kept inactive.")
@@ -58,6 +58,6 @@ st.markdown("#### Moderation queue")
 st.caption(f"Source: {source}. Live routes: `GET /api/admin/testimonials/`, `PATCH /api/admin/testimonials/{{id}}`.")
 st.dataframe(
     to_frame(queue).loc[:, ["user_name", "status", "created_at"]],
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )

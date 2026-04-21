@@ -6,7 +6,7 @@ from shared.admin_ui import boot, page_header, require_admin_access
 
 
 boot("Brands")
-require_admin_access()
+require_admin_access("cars")
 
 page_header(
     "Brand management",
@@ -21,7 +21,7 @@ with left:
     with st.form("brand-create", clear_on_submit=True):
         name = st.text_input("Brand name")
         logo_url = st.text_input("Logo URL", placeholder="https://...")
-        save = st.form_submit_button("Save brand", use_container_width=True)
+        save = st.form_submit_button("Save brand", width="stretch")
     if save and name:
         try:
             create_brand(name=name, logo_url=logo_url or None)
@@ -37,7 +37,7 @@ with right:
     st.caption(f"Source: {source}. Live route: `GET /api/admin/cars/brands`.")
     st.data_editor(
         brands_df.loc[:, [column for column in ["name", "logo_url", "created_at"] if column in brands_df.columns]],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         disabled=True,
     )
