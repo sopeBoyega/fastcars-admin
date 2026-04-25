@@ -1,0 +1,98 @@
+<!-- File: fastcars-admin/templates/subscribers/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% call ui.page_hero(
+    "Audience management",
+    "Keep the subscriber list organized and easier to trust",
+    "Filter the mailing audience by segment, inspect a specific subscriber, and remove records when they should no longer stay in the list.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('subscribers.index') }}" class="button button-secondary">Reset audience view</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Subscribers", subscribers|length, "Total newsletter audience returned by the backend.") }}
+    {{ ui.metric_card("Filtered audience", filtered_subscribers|length, "Rows matching the currently selected segment.") }}
+    {{ ui.metric_card("Segments", segments|length - 1, "Distinct audience buckets currently present in the list.", "neutral") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Audience", "Filter the subscriber list", "Choose a segment and optionally load one subscriber into the review state.") }}
+
+    <form method="get" action="{{ url_for('subscribers.index') }}" class="filter-grid">
+        <label class="field">
+            <span>Segment</span>
+            <select name="segment">
+                {% for option in segments %}
+                <option value="{{ option }}" {% if option == segment_filter %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Select subscriber</span>
+            <select name="subscriber_id">
+                {% for subscriber in filtered_subscribers %}
+                {% set subscriber_id = subscriber.id or subscriber._id %}
+                <option value="{{ subscriber_id }}" {% if selected_subscriber and subscriber_id == (selected_subscriber.id or selected_subscriber._id) %}selected{% endif %}>
+                    {{ subscriber.email }} / {{ subscriber.segment }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Apply view</button>
+            <a href="{{ url_for('subscribers.index') }}" class="button button-secondary">Reset</a>
+        </div>
+    </form>
+
+    {% if selected_subscriber %}
+    <div class="selection-banner selection-banner-inline">
+        <div>
+            <p class="eyebrow">Selected subscriber</p>
+            <h3>{{ selected_subscriber.email }}</h3>
+            <p class="muted">Segment: {{ selected_subscriber.segment }}</p>
+        </div>
+        <form method="post" action="{{ url_for('subscribers.delete', subscriber_id=selected_subscriber.id or selected_subscriber._id) }}" data-confirm="Remove {{ selected_subscriber.email }} from the audience?">
+            <input type="hidden" name="return_segment" value="{{ segment_filter }}">
+            <input type="hidden" name="subscriber_email" value="{{ selected_subscriber.email }}">
+            <button type="submit" class="button button-danger">Remove subscriber</button>
+        </form>
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Table", "Audience list", "Scan subscriber emails, segment labels, and signup timing across the current filtered view.") }}
+
+    {% if filtered_subscribers %}
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Segment</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subscriber in filtered_subscribers %}
+                <tr>
+                    <td data-label="Email">{{ subscriber.email }}</td>
+                    <td data-label="Segment">{{ subscriber.segment }}</td>
+                    <td data-label="Created">{{ subscriber.created_at|datetimefmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No subscribers in this segment", "Try another audience segment or reset the view to see more subscriber records.") }}
+    {% endif %}
+</section>
+{% endblock %}

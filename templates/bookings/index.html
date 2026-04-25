@@ -1,0 +1,148 @@
+<!-- File: fastcars-admin/templates/bookings/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% set pending_count = all_bookings|selectattr('status', 'equalto', 'pending')|list|length %}
+{% set confirmed_count = all_bookings|selectattr('status', 'equalto', 'confirmed')|list|length %}
+{% set cancelled_count = all_bookings|selectattr('status', 'equalto', 'cancelled')|list|length %}
+{% call ui.page_hero(
+    "Queue management",
+    "Review reservations with less friction and clearer context",
+    "Filter the booking queue, inspect a reservation in detail, and take moderation actions without losing the broader operational picture.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('bookings.index', status='pending') }}" class="button button-primary">Show pending only</a>
+    <a href="{{ url_for('bookings.index') }}" class="button button-secondary">Show full queue</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Queue size", all_bookings|length, "All bookings currently visible to the admin workspace.") }}
+    {{ ui.metric_card("Pending review", pending_count, "Reservations still waiting for an admin decision.", "warning") }}
+    {{ ui.metric_card("Confirmed revenue", confirmed_revenue|currency, "Total value across bookings already confirmed.", "positive") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Queue", "Open and filter the booking queue", "Choose a status view, then load a specific reservation into the review area below.") }}
+
+    <form method="get" action="{{ url_for('bookings.index') }}" class="filter-grid">
+        <label class="field">
+            <span>Filter by status</span>
+            <select name="status">
+                {% for option in ["All", "pending", "confirmed", "cancelled"] %}
+                <option value="{{ option }}" {% if option == status_filter %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Review booking</span>
+            <select name="booking_id">
+                {% for booking in filtered_bookings %}
+                <option value="{{ booking.id }}" {% if selected_booking and booking.id == selected_booking.id %}selected{% endif %}>
+                    {{ booking.booking_ref }} / {{ booking.customer }} / {{ booking.status }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Open booking</button>
+            <a href="{{ url_for('bookings.index') }}" class="button button-secondary">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Pending", pending_count, "Reservations still awaiting moderation.", "warning") }}
+    {{ ui.metric_card("Confirmed", confirmed_count, "Bookings that are already locked in.", "positive") }}
+    {{ ui.metric_card("Cancelled", cancelled_count, "Reservations already closed out or withdrawn.", "danger") }}
+</section>
+
+{% if booking_detail %}
+<section class="panel-grid two-up">
+    <article class="panel">
+        {{ ui.section_header("Reservation detail", "Booking overview", "Live detail source: " ~ detail_source ~ ".") }}
+        <div class="selection-banner">
+            <div>
+                <p class="eyebrow">Reference</p>
+                <h3>{{ booking_detail.booking_ref }}</h3>
+            </div>
+            {{ ui.status_badge(booking_detail.status) }}
+        </div>
+        <div class="detail-list">
+            <div><span>Customer</span><strong>{{ booking_detail.customer }}</strong></div>
+            <div><span>Customer email</span><strong>{{ booking_detail.user_email or "Not provided" }}</strong></div>
+            <div><span>Car</span><strong>{{ booking_detail.car_name }}</strong></div>
+            <div><span>Travel window</span><strong>{{ booking_detail.start_date|datefmt }} to {{ booking_detail.end_date|datefmt }}</strong></div>
+            <div><span>Total cost</span><strong>{{ booking_detail.total_cost|currency }}</strong></div>
+            <div><span>Total days</span><strong>{{ booking_detail.total_days or "N/A" }}</strong></div>
+        </div>
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Actions", "Moderate this booking", "Use the controls below to confirm or cancel the selected reservation.") }}
+        <div class="action-stack">
+            <form method="post" action="{{ url_for('bookings.confirm', booking_id=booking_detail.id) }}">
+                <input type="hidden" name="return_status" value="{{ status_filter }}">
+                <input type="hidden" name="booking_ref" value="{{ booking_detail.booking_ref }}">
+                <button type="submit" class="button button-primary button-full">Confirm booking</button>
+            </form>
+            <form method="post" action="{{ url_for('bookings.cancel', booking_id=booking_detail.id) }}" data-confirm="Cancel {{ booking_detail.booking_ref }}?">
+                <input type="hidden" name="return_status" value="{{ status_filter }}">
+                <input type="hidden" name="booking_ref" value="{{ booking_detail.booking_ref }}">
+                <button type="submit" class="button button-danger button-full">Cancel booking</button>
+            </form>
+        </div>
+
+        <div class="mini-card action-note">
+            <p class="eyebrow">Operator note</p>
+            <p>Confirm only once the booking meets pricing, availability, and customer validation requirements.</p>
+        </div>
+    </article>
+</section>
+{% else %}
+<section class="panel">
+    {{ ui.empty_state("No booking selected", "Pick a reservation from the filter bar to view its details and moderation actions.") }}
+</section>
+{% endif %}
+
+<section class="panel">
+    {{ ui.section_header("Table", "Booking queue", "The filtered list below helps you scan customer, trip, and revenue context at a glance.") }}
+
+    {% if filtered_bookings %}
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>Booking ref</th>
+                    <th>Customer</th>
+                    <th>Car</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Status</th>
+                    <th>Total cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in filtered_bookings %}
+                <tr>
+                    <td data-label="Booking ref">{{ booking.booking_ref }}</td>
+                    <td data-label="Customer">{{ booking.customer }}</td>
+                    <td data-label="Car">{{ booking.car_name }}</td>
+                    <td data-label="Start">{{ booking.start_date|datefmt }}</td>
+                    <td data-label="End">{{ booking.end_date|datefmt }}</td>
+                    <td data-label="Status">{{ ui.status_badge(booking.status) }}</td>
+                    <td data-label="Total cost">{{ booking.total_cost|currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No bookings in this view", "Try switching to another status filter or reset the queue view to see more reservations.") }}
+    {% endif %}
+</section>
+{% endblock %}

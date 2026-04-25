@@ -1,0 +1,64 @@
+<!-- File: fastcars-admin/templates/auth/login.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+<section class="auth-grid">
+    <article class="panel auth-hero">
+        <p class="eyebrow">Admin operations</p>
+        <h2>Run FAST CARS from a calmer, sharper control room</h2>
+       
+
+        <div class="auth-feature-grid">
+            <article class="feature-item">
+                <strong>Backend-only sign-in</strong>
+                <span>Every admin session is authenticated against the live API with no demo fallback.</span>
+            </article>
+            <article class="feature-item">
+                <strong>Better daily visibility</strong>
+                <span>Surface booking pressure, fleet health, customer requests, and content changes faster.</span>
+            </article>
+            <article class="feature-item">
+                <strong>Cleaner operator experience</strong>
+                <span>Polished forms, stronger hierarchy, and better mobile behavior across the workspace.</span>
+            </article>
+        </div>
+
+      
+    </article>
+
+    <section class="panel auth-card">
+        {{ ui.section_header("Sign in", "Open the admin workspace", "Use a real admin account from the backend API.") }}
+
+        {% if not has_live_api %}
+        <div class="note-banner note-banner-warning">
+            <strong>API configuration required</strong>
+            <span>Set <code>API_URL</code> to the FastAPI backend before admin sign-in will work.</span>
+        </div>
+        {% else %}
+        {% endif %}
+
+        <form method="post" action="{{ url_for('auth.login', next=next_path) }}" class="stack-form auth-form">
+            <input type="hidden" name="next" value="{{ next_path }}">
+
+            <label class="field">
+                <span>Email</span>
+                <input type="email" name="email" autocomplete="email" placeholder="admin@fastcars.com" required>
+                <small class="field-note">Use the same email that exists in the backend admin account store.</small>
+            </label>
+
+            <label class="field">
+                <span>Password</span>
+                <input type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+            </label>
+
+            <button type="submit" class="button button-primary button-full">Enter admin workspace</button>
+        </form>
+
+        <div class="auth-support">
+            <span class="eyebrow">Need a quick check?</span>
+            <p>If sign-in fails, confirm the backend is running and the admin account has permission to access <code>/api/admin</code> routes.</p>
+        </div>
+    </section>
+</section>
+{% endblock %}

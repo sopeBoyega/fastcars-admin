@@ -1,2 +1,7 @@
-streamlit
-httpx
+# File: fastcars-admin/requirements.txt
+flask
+requests
+python-dotenv
+plotly
+Werkzeug
+gunicorn

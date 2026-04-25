@@ -1,0 +1,357 @@
+<!-- File: fastcars-admin/templates/vehicles/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% set active_count = all_cars|selectattr('status', 'equalto', 'active')|list|length %}
+{% set featured_count = all_cars|selectattr('featured')|list|length %}
+
+{% call ui.page_hero(
+    "Inventory command",
+    "Keep the fleet current, bookable, and easy to manage",
+    "Filter the catalog, create fresh listings, and update live vehicle records from one cleaner workspace.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('vehicles.brands') }}" class="button button-secondary">Manage brands</a>
+    <a href="{{ url_for('vehicles.index') }}" class="button button-secondary">Reset filters</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Fleet size", all_cars|length, "All vehicles currently available in the admin catalog.") }}
+    {{ ui.metric_card("Active listings", active_count, "Cars ready to appear in the customer journey.", "positive") }}
+    {{ ui.metric_card("Featured cars", featured_count, "Listings currently marked for extra visibility.", "neutral") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Inventory controls", "Find the exact vehicle record you want to work on", "Use the filters below to narrow the table and load a specific car into the editor.") }}
+
+    <form method="get" action="{{ url_for('vehicles.index') }}" class="filter-grid filter-grid-wide">
+        <label class="field">
+            <span>Brand</span>
+            <select name="brand">
+                {% for option in brand_options %}
+                <option value="{{ option }}" {% if option == brand_filter %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Status</span>
+            <select name="status">
+                {% for option in ["All", "active", "inactive"] %}
+                <option value="{{ option }}" {% if option == status_filter %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Manage existing car</span>
+            <select name="car_id">
+                {% for car in filtered_cars %}
+                <option value="{{ car.id }}" {% if selected_car and car.id == selected_car.id %}selected{% endif %}>
+                    {{ car.name }} / {{ car.status }} / {{ car.brand_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="checkbox-field">
+            <input type="checkbox" name="featured" value="1" {% if featured_only %}checked{% endif %}>
+            <span>Featured only</span>
+        </label>
+
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Apply filters</button>
+            <a href="{{ url_for('vehicles.index') }}" class="button button-secondary">Clear</a>
+        </div>
+    </form>
+</section>
+
+<section class="panel-grid vehicle-workspace">
+    <article class="panel">
+        {{ ui.section_header("Create", "Add a new vehicle", "Capture the essentials once and push the listing to the backend cleanly.") }}
+
+        <form method="post" action="{{ url_for('vehicles.index') }}" enctype="multipart/form-data" class="stack-form">
+            <label class="field">
+                <span>Brand</span>
+                <select name="brand_id" required>
+                    <option value="">Select a brand</option>
+                    {% for brand in brands %}
+                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Car name</span>
+                <input type="text" name="name" required>
+            </label>
+
+            <label class="field">
+                <span>Category</span>
+                <select name="category">
+                    {% for option in ["Economy", "Premium", "SUV", "Luxury"] %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Description</span>
+                <textarea name="description" rows="4" required></textarea>
+            </label>
+
+            <div class="inline-fields">
+                <label class="field">
+                    <span>Daily rate</span>
+                    <input type="number" name="daily_rate" min="50" step="5" value="150000" required>
+                </label>
+                <label class="field">
+                    <span>Seats</span>
+                    <input type="number" name="seats" min="2" max="9" value="5" required>
+                </label>
+            </div>
+
+            <div class="inline-fields">
+                <label class="field">
+                    <span>Transmission</span>
+                    <select name="transmission">
+                        {% for option in ["Automatic", "Manual"] %}
+                        <option value="{{ option }}">{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="field">
+                    <span>Fuel type</span>
+                    <select name="fuel_type">
+                        {% for option in ["Petrol", "Diesel", "Electric", "Hybrid"] %}
+                        <option value="{{ option }}">{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+
+            <label class="field">
+                <span>Listing status</span>
+                <select name="status">
+                    {% for option in ["active", "inactive"] %}
+                    <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Upload car images</span>
+                <input type="file" name="image_files" accept=".png,.jpg,.jpeg,.webp" multiple data-file-input>
+                <small class="file-feedback">Selected files are uploaded before the car is saved.</small>
+            </label>
+
+            <label class="field">
+                <span>Or paste image URLs</span>
+                <textarea name="image_urls" rows="3" placeholder="https://...&#10;https://..."></textarea>
+                <small class="field-note">Use one URL per line if the images are already hosted elsewhere.</small>
+            </label>
+
+            <button type="submit" class="button button-primary">Create car</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Update", "Manage the selected car", "Any changes here are sent directly to the live admin API.") }}
+
+        {% if selected_car %}
+        <form method="post" action="{{ url_for('vehicles.update_vehicle', car_id=selected_car.id) }}" enctype="multipart/form-data" class="stack-form">
+            <input type="hidden" name="return_brand" value="{{ brand_filter }}">
+            <input type="hidden" name="return_status" value="{{ status_filter }}">
+            <input type="hidden" name="return_featured" value="{{ '1' if featured_only else '0' }}">
+            <input type="hidden" name="return_car_id" value="{{ selected_car.id }}">
+
+            <label class="field">
+                <span>Brand</span>
+                <select name="brand_id" required>
+                    {% for brand in brands %}
+                    <option value="{{ brand.id }}" {% if brand.id == selected_car.brand_id %}selected{% endif %}>{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Car name</span>
+                <input type="text" name="name" value="{{ selected_car.name }}" required>
+            </label>
+
+            <label class="field">
+                <span>Category</span>
+                <select name="category">
+                    {% for option in ["Economy", "Premium", "SUV", "Luxury"] %}
+                    <option value="{{ option }}" {% if option == selected_car.category %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Description</span>
+                <textarea name="description" rows="4" required>{{ selected_car.description }}</textarea>
+            </label>
+
+            <div class="inline-fields">
+                <label class="field">
+                    <span>Daily rate</span>
+                    <input type="number" name="daily_rate" min="50" step="5" value="{{ selected_car.daily_rate }}" required>
+                </label>
+                <label class="field">
+                    <span>Seats</span>
+                    <input type="number" name="seats" min="2" max="9" value="{{ selected_car.seats }}" required>
+                </label>
+            </div>
+
+            <div class="inline-fields">
+                <label class="field">
+                    <span>Transmission</span>
+                    <select name="transmission">
+                        {% for option in ["Automatic", "Manual"] %}
+                        <option value="{{ option }}" {% if option == selected_car.transmission %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="field">
+                    <span>Fuel type</span>
+                    <select name="fuel_type">
+                        {% for option in ["Petrol", "Diesel", "Electric", "Hybrid"] %}
+                        <option value="{{ option }}" {% if option == selected_car.fuel_type %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+
+            <label class="field">
+                <span>Listing status</span>
+                <select name="status">
+                    {% for option in ["active", "inactive"] %}
+                    <option value="{{ option }}" {% if option == selected_car.status %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Upload additional car images</span>
+                <input type="file" name="image_files" accept=".png,.jpg,.jpeg,.webp" multiple data-file-input>
+                <small class="file-feedback">New uploads are appended to the image URL list below.</small>
+            </label>
+
+            <label class="field">
+                <span>Image URLs</span>
+                <textarea name="image_urls" rows="3">{{ selected_car.images | join('\n') }}</textarea>
+                <small class="field-note">Keep the first image as the primary cover photo for better presentation.</small>
+            </label>
+
+            <button type="submit" class="button button-primary">Save changes</button>
+        </form>
+
+        <form
+            method="post"
+            action="{{ url_for('vehicles.delete_vehicle', car_id=selected_car.id) }}"
+            data-confirm="Delete {{ selected_car.name }} from the fleet?"
+            class="danger-form"
+        >
+            <input type="hidden" name="return_brand" value="{{ brand_filter }}">
+            <input type="hidden" name="return_status" value="{{ status_filter }}">
+            <input type="hidden" name="return_featured" value="{{ '1' if featured_only else '0' }}">
+            <input type="hidden" name="car_name" value="{{ selected_car.name }}">
+            <button type="submit" class="button button-danger button-full">Delete selected car</button>
+        </form>
+        {% else %}
+        {{ ui.empty_state("No car selected", "Adjust the filters or choose a vehicle from the current result set to load it into the editor.") }}
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Snapshot", "Selected vehicle summary", "Use this as a quick confidence check before editing or deleting.") }}
+
+        {% if selected_car %}
+        <div class="selection-card">
+            {% if selected_car.image_url %}
+            <img src="{{ selected_car.image_url }}" alt="{{ selected_car.name }}" class="vehicle-preview-image" loading="lazy">
+            {% else %}
+            <div class="vehicle-preview-placeholder">{{ selected_car.name[:2]|upper }}</div>
+            {% endif %}
+
+            <div class="selection-card-body">
+                <div class="selection-card-title">
+                    <div>
+                        <p class="eyebrow">{{ selected_car.brand_name }}</p>
+                        <h3>{{ selected_car.name }}</h3>
+                    </div>
+                    {{ ui.status_badge(selected_car.status) }}
+                </div>
+
+                <div class="detail-list">
+                    <div><span>Category</span><strong>{{ selected_car.category }}</strong></div>
+                    <div><span>Daily rate</span><strong>{{ selected_car.daily_rate|currency }}</strong></div>
+                    <div><span>Seats</span><strong>{{ selected_car.seats }}</strong></div>
+                    <div><span>Transmission</span><strong>{{ selected_car.transmission }}</strong></div>
+                    <div><span>Fuel type</span><strong>{{ selected_car.fuel_type }}</strong></div>
+                    <div><span>Image count</span><strong>{{ selected_car.images|length }}</strong></div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        {{ ui.empty_state("Nothing to preview", "Once a vehicle is selected, its main image and key facts will appear here.") }}
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Review", "Filtered fleet table", "A compact view of the current result set so you can scan pricing, category, and live status quickly.") }}
+
+    {% if filtered_cars %}
+    <div class="table-shell compact-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Brand</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Rate</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for car in filtered_cars %}
+                <tr>
+                    <td data-label="Brand">{{ car.brand_name }}</td>
+                    <td data-label="Name">{{ car.name }}</td>
+                    <td data-label="Category">{{ car.category }}</td>
+                    <td data-label="Rate">{{ car.daily_rate|currency }}</td>
+                    <td data-label="Status">{{ ui.status_badge(car.status) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No vehicles match these filters", "Try widening the brand or listing status filters to bring vehicles back into view.") }}
+    {% endif %}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Spotlight", "Featured fleet cards", "A visual sweep of the first few vehicles in the current filtered result set.") }}
+    <div class="card-grid three-up">
+        {% for car in filtered_cars[:3] %}
+        <article class="mini-card">
+            <div class="mini-card-header">
+                <p class="eyebrow">{{ car.brand_name }}</p>
+                {{ ui.status_badge(car.status) }}
+            </div>
+            <h3>{{ car.name }}</h3>
+            <p>{{ car.category }} / {{ car.transmission }} / {{ car.fuel_type }}</p>
+            <strong>{{ car.daily_rate|currency }} / day</strong>
+        </article>
+        {% else %}
+        {{ ui.empty_state("No spotlight vehicles", "Once the fleet has matching vehicles, the first few listings will appear here for a quick visual scan.") }}
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

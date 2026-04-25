@@ -1,0 +1,129 @@
+<!-- File: fastcars-admin/templates/base.html -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f172a">
+    <title>{{ page_title or "FAST CARS Admin" }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+</head>
+<body class="{{ 'workspace-shell' if session.get('token') else 'auth-shell' }}">
+    <a href="#main-content" class="skip-link">Skip to content</a>
+    {% if session.get('token') %}
+    <div class="app-backdrop" data-nav-backdrop hidden></div>
+    {% endif %}
+    <div class="app-frame">
+        {% if session.get('token') %}
+        <aside class="sidebar" id="admin-sidebar" data-sidebar>
+            <div class="brand-block">
+                <div class="brand-mark">FC</div>
+                <div>
+                    <p class="eyebrow">FAST CARS</p>
+                    <h2>Control Room</h2>
+                    <p class="muted">A cleaner workspace for fleet, bookings, and customer operations.</p>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-avatar">{{ (session['admin_user']['name'] or 'A')[0] }}</div>
+                <div>
+                    <p class="eyebrow">Signed in as</p>
+                    <strong>{{ session['admin_user']['name'] }}</strong>
+                    <p class="muted">{{ session['admin_user']['email'] }}</p>
+                </div>
+                <span class="status-badge is-neutral">{{ session['admin_user']['role'] }}</span>
+            </div>
+
+            <nav class="sidebar-nav" aria-label="Admin navigation">
+                {% for item in navigation_items %}
+                <a
+                    href="{{ url_for(item.endpoint) }}"
+                    class="nav-link {% if current_endpoint == item.endpoint %}active{% endif %}"
+                >
+                    <span class="nav-index">{{ "%02d"|format(loop.index) }}</span>
+                    <span class="nav-copy">
+                        <strong>{{ item.label }}</strong>
+                        <small>{{ item.caption }}</small>
+                    </span>
+                </a>
+                {% endfor %}
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-note">
+                    <p class="eyebrow">Workspace status</p>
+                    <span class="status-badge {{ api_status_class }}">{{ api_status_label }}</span>
+                </div>
+                <form method="post" action="{{ url_for('auth.logout') }}" class="sidebar-logout">
+                    <button type="submit" class="button button-secondary button-full">Log out</button>
+                </form>
+            </div>
+        </aside>
+        {% endif %}
+
+        <div class="main-shell">
+            {% if session.get('token') %}
+            <header class="topbar">
+                <div class="topbar-main">
+                    <button
+                        type="button"
+                        class="nav-toggle"
+                        data-nav-toggle
+                        aria-controls="admin-sidebar"
+                        aria-expanded="false"
+                    >
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span class="sr-only">Toggle navigation</span>
+                    </button>
+                    <div>
+                        <p class="eyebrow">{{ page_kicker or "FAST CARS Admin" }}</p>
+                        <h1>{{ page_title or "Admin Workspace" }}</h1>
+                    </div>
+                </div>
+                <div class="topbar-meta">
+                    <div class="topbar-chip">
+                        <span>Today</span>
+                        <strong>{{ today_label }}</strong>
+                    </div>
+                    <div class="topbar-chip">
+                        <span>Operator</span>
+                        <strong>{{ session['admin_user']['name'] }}</strong>
+                    </div>
+                    <span class="status-badge {{ api_status_class }}">{{ api_status_label }}</span>
+                </div>
+            </header>
+            {% endif %}
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <section class="flash-stack" aria-label="Notifications">
+                    {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}" data-flash-message>
+                        <span>{{ message }}</span>
+                        <button type="button" class="flash-close" data-dismiss-flash aria-label="Dismiss message">Close</button>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+            {% endwith %}
+
+            <main class="content" id="main-content">
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="footer">
+                <span>FAST CARS Admin</span>
+                <span>Operational workspace for the live backend API.</span>
+                <span>{{ current_year }}</span>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

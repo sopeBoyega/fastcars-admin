@@ -1,0 +1,95 @@
+<!-- File: fastcars-admin/templates/dashboard/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% call ui.page_hero(
+    "Operations overview",
+    "A calmer admin cockpit for the work that needs attention now",
+    "Start with the clearest signals first: booking pressure, fleet health, customer messages, and confirmed revenue, all synced from the backend API.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('bookings.index', status='pending') }}" class="button button-primary">Review pending bookings</a>
+    <a href="{{ url_for('vehicles.index') }}" class="button button-secondary">Manage fleet</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Registered users", summary.users, "Customer accounts in the FAST CARS system.", "neutral") }}
+    {{ ui.metric_card("Fleet count", summary.cars, "Vehicles currently visible to the admin team.", "neutral") }}
+    {{ ui.metric_card("Total bookings", summary.bookings, "All reservation records currently tracked by the backend.", "neutral") }}
+    {{ ui.metric_card("Pending bookings", summary.pending_bookings, "Reservations waiting for a decision.", "warning") }}
+    {{ ui.metric_card("Subscribers", summary.subscribers, "Newsletter and campaign audience size.", "neutral") }}
+    {{ ui.metric_card("Total queries", summary.enquiries, "Contact us enquiries submitted by customers.", "neutral") }}
+    {{ ui.metric_card("Unread enquiries", summary.unread_enquiries, "Messages still needing a reply or review.", "warning") }}
+    {{ ui.metric_card("Testimonials", summary.testimonials, "Customer reviews available for moderation.", "neutral") }}
+    {{ ui.metric_card("Confirmed revenue", summary.confirmed_revenue|currency, "Value already locked in through confirmed trips.", "positive") }}
+</section>
+
+<section class="panel-grid two-up">
+    <article class="panel chart-panel">
+        {{ ui.section_header("Signal", "Booking status", "See how much of the queue needs action versus what has already been resolved.") }}
+        {{ booking_chart|safe }}
+    </article>
+
+    <article class="panel chart-panel">
+        {{ ui.section_header("Signal", "Fleet by brand", "Check how the current vehicle mix is distributed across the brand catalog.") }}
+        {{ fleet_chart|safe }}
+    </article>
+</section>
+
+<section class="card-grid three-up">
+    <article class="mini-card mini-card-accent">
+        <p class="eyebrow">Fleet health</p>
+        <h3>{{ summary.active_cars }} active listings</h3>
+        <p>Keep supply high by reviewing inactive cars and refreshing thin categories before demand spikes.</p>
+    </article>
+    <article class="mini-card">
+        <p class="eyebrow">Inbox attention</p>
+        <h3>{{ summary.unread_enquiries }} customer touchpoints</h3>
+        <p>Unread messages and new testimonials are often the fastest route to service recovery and trust building.</p>
+    </article>
+    <article class="mini-card">
+        <p class="eyebrow">Quick actions</p>
+        <div class="button-stack">
+            <a href="{{ url_for('enquiries.index', view='unread') }}" class="button button-secondary button-full">Open unread enquiries</a>
+            <a href="{{ url_for('content.index') }}" class="button button-secondary button-full">Edit live content</a>
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Latest activity", "Recent bookings", "Newest reservations synced from the backend, surfaced for a quick operational scan.") }}
+    {% if recent_bookings %}
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>Booking ref</th>
+                    <th>Customer</th>
+                    <th>Car</th>
+                    <th>Status</th>
+                    <th>Total cost</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in recent_bookings %}
+                <tr>
+                    <td data-label="Booking ref">{{ booking.booking_ref }}</td>
+                    <td data-label="Customer">{{ booking.customer }}</td>
+                    <td data-label="Car">{{ booking.car_name }}</td>
+                    <td data-label="Status">{{ ui.status_badge(booking.status) }}</td>
+                    <td data-label="Total cost">{{ booking.total_cost|currency }}</td>
+                    <td data-label="Created">{{ booking.created_at|datetimefmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No bookings yet", "Once reservations start coming in, the latest activity feed will appear here for quick review.") }}
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,117 @@
+<!-- File: fastcars-admin/templates/vehicles/brands.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% set logo_ready = brands|selectattr('logo_url')|list|length %}
+
+{% call ui.page_hero(
+    "Fleet taxonomy",
+    "Keep the brand library clean and presentation-ready",
+    "A structured brand catalog makes vehicle creation faster and keeps customer-facing inventory more trustworthy.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('vehicles.index') }}" class="button button-secondary">Back to vehicles</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Total brands", brands|length, "Every manufacturer currently available to the fleet admin.") }}
+    {{ ui.metric_card("Logos ready", logo_ready, "Brands that already include a usable logo URL.", "positive") }}
+    {{ ui.metric_card("Logos pending", (brands|length) - logo_ready, "Brands that still need a visual identity added.", "warning") }}
+</section>
+
+<section class="panel-grid two-up">
+    <article class="panel">
+        {{ ui.section_header("Create", "Add a new brand", "Keep names consistent and add a logo URL where available.") }}
+
+        <form method="post" action="{{ url_for('vehicles.brands') }}" class="stack-form">
+            <label class="field">
+                <span>Brand name</span>
+                <input type="text" name="name" required>
+            </label>
+
+            <label class="field">
+                <span>Logo URL</span>
+                <input type="url" name="logo_url" placeholder="https://...">
+            </label>
+
+            <button type="submit" class="button button-primary">Save brand</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Review", "Brand library", "Use this list to check naming consistency, visual readiness, and recency.") }}
+
+        {% if brands %}
+        <div class="table-shell">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Logo URL</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+            </thead>
+            <tbody>
+                {% for brand in brands %}
+                {% set update_form_id = "brand-update-" ~ brand.id %}
+                <tr>
+                    <td data-label="Name">
+                        <input form="{{ update_form_id }}" type="text" name="name" value="{{ brand.name }}" aria-label="Brand name" required>
+                    </td>
+                    <td data-label="Logo URL">
+                        <input form="{{ update_form_id }}" type="url" name="logo_url" value="{{ brand.logo_url or '' }}" aria-label="Logo URL" placeholder="https://...">
+                    </td>
+                    <td data-label="Created">{{ brand.created_at|datetimefmt }}</td>
+                    <td data-label="Actions">
+                        <div class="table-actions">
+                            <form id="{{ update_form_id }}" method="post" action="{{ url_for('vehicles.update_brand', brand_id=brand.id) }}" class="table-form">
+                                <button type="submit" class="button button-secondary button-small">Save</button>
+                            </form>
+                            <form
+                                method="post"
+                                action="{{ url_for('vehicles.delete_brand', brand_id=brand.id) }}"
+                                data-confirm="Delete {{ brand.name }} from the brand library?"
+                            >
+                                <input type="hidden" name="brand_name" value="{{ brand.name }}">
+                                <button type="submit" class="button button-danger button-small">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        {{ ui.empty_state("No brands yet", "Add the first vehicle brand here to start organizing the fleet catalog.") }}
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Featured", "Brand spotlight", "A quick visual pass over the newest or most prominent brands in the library.") }}
+
+    <div class="card-grid three-up">
+        {% for brand in featured_brands %}
+        <article class="mini-card">
+            <div class="brand-chip">
+                {% if brand.logo_url %}
+                <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" loading="lazy">
+                {% else %}
+                <span>{{ brand.name[:2]|upper }}</span>
+                {% endif %}
+            </div>
+            <p class="eyebrow">Brand</p>
+            <h3>{{ brand.name }}</h3>
+            <p>{{ brand.logo_url or "Logo pending or not provided." }}</p>
+        </article>
+        {% else %}
+        {{ ui.empty_state("No spotlight brands", "Once brands are added, a few recent entries will be highlighted here.") }}
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

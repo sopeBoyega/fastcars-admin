@@ -1,0 +1,121 @@
+<!-- File: fastcars-admin/templates/content/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% call ui.page_hero(
+    "CMS workspace",
+    "Edit live site copy with clearer context and safer scanning",
+    "Choose an existing content key or create a new one, then update the value in a cleaner editor built for quick content operations.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('dashboard.index') }}" class="button button-secondary">Back to dashboard</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Saved keys", items|length, "Content entries currently returned by the backend content store.") }}
+    {{ ui.metric_card("Editing mode", mode|title, "Switch between existing keys and creating a custom key.") }}
+    {{ ui.metric_card("Current selection", selected_key or "None", "The content key loaded into the editor right now.", "neutral") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Contact", "Update contact us details", "Maintain the public contact information used for customer support and enquiries.") }}
+
+    <form method="post" action="{{ url_for('content.index') }}" class="filter-grid">
+        <input type="hidden" name="mode" value="contact">
+        {% for field in contact_fields %}
+        <label class="field">
+            <span>{{ field.label }}</span>
+            <input
+                type="{{ field.input_type }}"
+                name="{{ field.key }}"
+                value="{{ content_map.get(field.key, '') }}"
+                placeholder="{{ field.label }}"
+            >
+        </label>
+        {% endfor %}
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Save contact details</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel-grid two-up">
+    <article class="panel">
+        {{ ui.section_header("CMS editor", "Load and update site content", "Pick the content key first, then edit its value in the form below.") }}
+
+        <form method="get" action="{{ url_for('content.index') }}" class="stack-form compact-form">
+            <label class="field">
+                <span>Key mode</span>
+                <select name="mode">
+                    <option value="existing" {% if mode == 'existing' %}selected{% endif %}>Existing key</option>
+                    <option value="custom" {% if mode == 'custom' %}selected{% endif %}>Custom key</option>
+                </select>
+            </label>
+
+            {% if mode == "existing" %}
+            <label class="field">
+                <span>Content key</span>
+                <select name="key">
+                    {% for key in content_map.keys() %}
+                    <option value="{{ key }}" {% if key == selected_key %}selected{% endif %}>{{ key }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {% else %}
+            <label class="field">
+                <span>Custom content key</span>
+                <input type="text" name="key" value="{{ selected_key }}" placeholder="homepage_hero">
+            </label>
+            {% endif %}
+
+            <button type="submit" class="button button-secondary">Load content key</button>
+        </form>
+
+        <form method="post" action="{{ url_for('content.index') }}" class="stack-form">
+            <input type="hidden" name="mode" value="{{ mode }}">
+            <input type="hidden" name="selected_key" value="{{ selected_key if mode == 'existing' else '' }}">
+
+            {% if mode == "custom" %}
+            <label class="field">
+                <span>Custom key</span>
+                <input type="text" name="custom_key" value="{{ selected_key }}" placeholder="homepage_hero" required>
+            </label>
+            {% endif %}
+
+            <label class="field">
+                <span>Value</span>
+                <textarea name="value" rows="8" required>{{ current_value }}</textarea>
+                <small class="field-note">Changes are written directly to the backend content endpoint for the chosen key.</small>
+            </label>
+
+            <button type="submit" class="button button-primary">Save content</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Current map", "Saved content keys", "Review existing keys and the value currently stored for each one.") }}
+
+        {% if selected_key %}
+        <div class="content-preview-card">
+            <p class="eyebrow">Current selection</p>
+            <h3>{{ selected_key }}</h3>
+            <p>{{ current_value or "No value stored for this key yet." }}</p>
+        </div>
+        {% endif %}
+
+        <div class="card-grid two-up">
+            {% for item in items %}
+            <article class="mini-card">
+                <p class="eyebrow">{{ item.key }}</p>
+                <p>{{ item.value }}</p>
+            </article>
+            {% else %}
+            {{ ui.empty_state("No content keys available", "Once the backend provides editable site content, the saved keys will appear here.") }}
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}

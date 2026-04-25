@@ -1,0 +1,139 @@
+<!-- File: fastcars-admin/templates/users/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% call ui.page_hero(
+    "Customer directory",
+    "Inspect customer accounts without losing the bigger picture",
+    "Review the customer base, open a profile, and scan booking history from a cleaner directory workflow.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('bookings.index') }}" class="button button-secondary">Jump to bookings</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Registered users", total_users, "Customer accounts currently available in the admin directory.") }}
+    {{ ui.metric_card("Active accounts", active_users, "Users still marked active and available for bookings.", "positive") }}
+    {{ ui.metric_card("Dormant accounts", inactive_users, "Profiles that may need support, follow-up, or cleanup.", "warning") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Directory", "Open a user profile", "Choose a customer account from the list below to inspect details and booking history.") }}
+
+    <form method="get" action="{{ url_for('users.index') }}" class="filter-grid">
+        <label class="field">
+            <span>Inspect user</span>
+            <select name="user_id">
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if selected_user and user.id == selected_user.id %}selected{% endif %}>
+                    {{ user.email or user.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Open profile</button>
+            <a href="{{ url_for('users.index') }}" class="button button-secondary">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="panel-grid two-up">
+    <article class="panel">
+        {{ ui.section_header("Profile", "User details", "Live detail source: " ~ detail_source ~ ".") }}
+
+        {% if user_detail %}
+        <div class="selection-banner">
+            <div>
+                <p class="eyebrow">Customer</p>
+                <h3>{{ user_detail.name or "Unknown user" }}</h3>
+            </div>
+            {{ ui.status_badge(user_detail.status|title, user_detail.status|status_class) }}
+        </div>
+        <div class="detail-list">
+            <div><span>Name</span><strong>{{ user_detail.name or "Unknown user" }}</strong></div>
+            <div><span>Phone</span><strong>{{ user_detail.phone or "Not provided" }}</strong></div>
+            <div><span>Email</span><strong>{{ user_detail.email or "Not provided" }}</strong></div>
+            <div><span>Role</span><strong>{{ user_detail.role or "user" }}</strong></div>
+            <div><span>Status</span><strong>{{ (user_detail.status or "unknown")|title }}</strong></div>
+            <div><span>Joined</span><strong>{{ user_detail.created_at|datefmt if user_detail.created_at else "Unknown" }}</strong></div>
+        </div>
+        {% else %}
+        {{ ui.empty_state("No user selected", "Choose an account from the directory filter to inspect the full customer profile.") }}
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("History", "Booking history", "Past and current reservations associated with the selected customer.") }}
+
+        {% if booking_history %}
+        <div class="table-shell compact-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Booking ref</th>
+                        <th>Car</th>
+                        <th>Status</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Total cost</th>
+                    </tr>
+            </thead>
+            <tbody>
+                {% for booking in booking_history %}
+                <tr>
+                    <td data-label="Booking ref">{{ booking.booking_ref }}</td>
+                    <td data-label="Car">{{ booking.car_name }}</td>
+                    <td data-label="Status">{{ ui.status_badge(booking.status) }}</td>
+                    <td data-label="Start">{{ booking.start_date|datefmt }}</td>
+                    <td data-label="End">{{ booking.end_date|datefmt }}</td>
+                    <td data-label="Total cost">{{ booking.total_cost|currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        {{ ui.empty_state("No booking history", "The selected user has not completed or requested any bookings yet.") }}
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel">
+    {{ ui.section_header("All users", "Directory table", "Scan the customer base across contact details, status, and last seen activity.") }}
+
+    {% if users %}
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td data-label="Name">{{ user.name or "Unknown user" }}</td>
+                    <td data-label="Email">{{ user.email or "Not provided" }}</td>
+                    <td data-label="Phone">{{ user.phone or "Not provided" }}</td>
+                    <td data-label="Role">{{ user.role or "user" }}</td>
+                    <td data-label="Status">{{ ui.status_badge(user.status or "unknown") }}</td>
+                    <td data-label="Last seen">{{ user.last_seen|datetimefmt if user.last_seen else "Unknown" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No users available", "Customer accounts will appear here once the backend returns user records for the admin directory.") }}
+    {% endif %}
+</section>
+{% endblock %}
