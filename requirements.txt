@@ -2,6 +2,7 @@
 flask
 requests
 python-dotenv
+numpy
 plotly
 Werkzeug
 gunicorn
