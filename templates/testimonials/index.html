@@ -1,0 +1,124 @@
+<!-- File: fastcars-admin/templates/testimonials/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% set review_counts = namespace(active=0, hidden=0) %}
+{% for item in testimonials %}
+    {% if item.is_active or item.status == 'active' %}
+        {% set review_counts.active = review_counts.active + 1 %}
+    {% else %}
+        {% set review_counts.hidden = review_counts.hidden + 1 %}
+    {% endif %}
+{% endfor %}
+
+{% call ui.page_hero(
+    "Reviews queue",
+    "Moderate testimonials with clearer public-visibility controls",
+    "Open a customer review, inspect its message and rating, then decide whether it should appear on the public site.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('content.index') }}" class="button button-secondary">Review site content</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Total testimonials", testimonials|length, "All customer reviews returned to the admin workspace.") }}
+    {{ ui.metric_card("Visible now", review_counts.active, "Testimonials currently approved for public display.", "positive") }}
+    {{ ui.metric_card("Hidden", review_counts.hidden, "Reviews that are still private or awaiting approval.", "warning") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Moderate", "Open a testimonial", "Choose a review from the queue to inspect the message and adjust visibility.") }}
+
+    <form method="get" action="{{ url_for('testimonials.index') }}" class="filter-grid">
+        <label class="field">
+            <span>Select testimonial</span>
+            <select name="testimonial_id">
+                {% for item in testimonials %}
+                {% set item_id = item.id or item._id %}
+                {% set is_active = item.is_active or item.status == 'active' %}
+                <option value="{{ item_id }}" {% if selected_testimonial and item_id == (selected_testimonial.id or selected_testimonial._id) %}selected{% endif %}>
+                    {{ item.user_name }} / {{ 'active' if is_active else 'inactive' }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Open review</button>
+            <a href="{{ url_for('testimonials.index') }}" class="button button-secondary">Reset</a>
+        </div>
+    </form>
+</section>
+
+{% if selected_testimonial %}
+<section class="panel-grid two-up">
+    <article class="panel">
+        {{ ui.section_header("Review message", selected_testimonial.user_name, "Read the full customer voice before changing public visibility.") }}
+        <div class="quote-card">
+            <p>{{ selected_testimonial.message }}</p>
+        </div>
+        <div class="detail-list">
+            <div><span>Rating</span><strong>{{ selected_testimonial.rating }}/5</strong></div>
+            <div><span>Created</span><strong>{{ selected_testimonial.created_at|datetimefmt }}</strong></div>
+        </div>
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Actions", "Visibility controls", "Publish strong social proof or keep the review hidden until it is ready.") }}
+        <div class="action-stack">
+            <form method="post" action="{{ url_for('testimonials.update_status', testimonial_id=selected_testimonial.id or selected_testimonial._id) }}">
+                <input type="hidden" name="is_active" value="true">
+                <button type="submit" class="button button-primary button-full">Approve for public display</button>
+            </form>
+            <form method="post" action="{{ url_for('testimonials.update_status', testimonial_id=selected_testimonial.id or selected_testimonial._id) }}">
+                <input type="hidden" name="is_active" value="false">
+                <button type="submit" class="button button-secondary button-full">Keep hidden</button>
+            </form>
+        </div>
+
+        <div class="mini-card action-note">
+            <p class="eyebrow">Publishing guidance</p>
+            <p>Approve reviews that feel credible, specific, and aligned with the brand voice you want customers to see.</p>
+        </div>
+    </article>
+</section>
+{% else %}
+<section class="panel">
+    {{ ui.empty_state("No testimonial selected", "Pick a review from the moderation queue to inspect the full message and update its visibility.") }}
+</section>
+{% endif %}
+
+<section class="panel">
+    {{ ui.section_header("Moderation queue", "All testimonials", "A compact index of review status and submission timing.") }}
+
+    {% if testimonials %}
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Rating</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in testimonials %}
+                {% set is_active = item.is_active or item.status == 'active' %}
+                <tr>
+                    <td data-label="User">{{ item.user_name }}</td>
+                    <td data-label="Rating">{{ item.rating }}/5</td>
+                    <td data-label="Status">{{ ui.status_badge('active' if is_active else 'inactive') }}</td>
+                    <td data-label="Created">{{ item.created_at|datetimefmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No testimonials available", "Customer reviews will appear here once the backend starts returning testimonial records.") }}
+    {% endif %}
+</section>
+{% endblock %}

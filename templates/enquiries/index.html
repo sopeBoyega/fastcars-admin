@@ -1,0 +1,137 @@
+<!-- File: fastcars-admin/templates/enquiries/index.html -->
+{% extends "base.html" %}
+{% import "partials/ui.html" as ui %}
+
+{% block content %}
+{% set unread_count = all_enquiries|selectattr('status', 'equalto', 'unread')|list|length %}
+{% set read_count = all_enquiries|selectattr('status', 'equalto', 'read')|list|length %}
+
+{% call ui.page_hero(
+    "Inbox triage",
+    "Handle customer questions with less noise and faster context",
+    "Filter the enquiry inbox, open a message, and close the loop with clean moderation controls and a clearer activity table.",
+    badge_label=source
+) %}
+<div class="button-row">
+    <a href="{{ url_for('enquiries.index', view='unread') }}" class="button button-primary">Show unread</a>
+    <a href="{{ url_for('enquiries.index') }}" class="button button-secondary">Show all</a>
+</div>
+{% endcall %}
+
+<section class="metric-grid metric-grid-3">
+    {{ ui.metric_card("Inbox size", all_enquiries|length, "All customer enquiries returned by the backend.") }}
+    {{ ui.metric_card("Unread", unread_count, "Messages that still need first review or response.", "warning") }}
+    {{ ui.metric_card("Read", read_count, "Enquiries already reviewed by the admin team.", "positive") }}
+</section>
+
+<section class="panel">
+    {{ ui.section_header("Inbox", "Open and filter the customer inbox", "Choose the view state you want, then load a specific message below.") }}
+
+    <form method="get" action="{{ url_for('enquiries.index') }}" class="filter-grid">
+        <label class="field">
+            <span>View</span>
+            <select name="view">
+                {% for option in ["all", "unread", "read"] %}
+                <option value="{{ option }}" {% if option == view_filter %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Open enquiry</span>
+            <select name="enquiry_id">
+                {% for enquiry in enquiries %}
+                {% set enquiry_id = enquiry.id or enquiry._id %}
+                <option value="{{ enquiry_id }}" {% if selected_enquiry and enquiry_id == (selected_enquiry.id or selected_enquiry._id) %}selected{% endif %}>
+                    {{ enquiry.name }} / {{ enquiry.status }} / {{ enquiry.created_at|datetimefmt }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <div class="button-row">
+            <button type="submit" class="button button-primary">Open message</button>
+            <a href="{{ url_for('enquiries.index') }}" class="button button-secondary">Reset</a>
+        </div>
+    </form>
+</section>
+
+{% if selected_enquiry %}
+<section class="panel-grid two-up">
+    <article class="panel">
+        {{ ui.section_header("Message", selected_enquiry.name, "Read the enquiry in full before marking it resolved or deleting it.") }}
+
+        <div class="detail-list">
+            <div><span>Email</span><strong>{{ selected_enquiry.email }}</strong></div>
+            <div><span>Phone</span><strong>{{ selected_enquiry.phone or "Not provided" }}</strong></div>
+            <div><span>Status</span><strong>{{ selected_enquiry.status|title }}</strong></div>
+        </div>
+        <div class="message-card">
+            <p>{{ selected_enquiry.message }}</p>
+        </div>
+    </article>
+
+    <article class="panel">
+        {{ ui.section_header("Actions", "Moderation controls", "Update the enquiry status or remove it once the issue has been handled.") }}
+
+        <div class="action-stack">
+            {% if selected_enquiry.status == "unread" %}
+            <form method="post" action="{{ url_for('enquiries.mark_read', enquiry_id=selected_enquiry.id or selected_enquiry._id) }}">
+                <input type="hidden" name="return_view" value="{{ view_filter }}">
+                <button type="submit" class="button button-primary button-full">Mark as read</button>
+            </form>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('enquiries.delete', enquiry_id=selected_enquiry.id or selected_enquiry._id) }}" data-confirm="Delete this enquiry after review?">
+                <input type="hidden" name="return_view" value="{{ view_filter }}">
+                <button type="submit" class="button button-danger button-full">Delete after review</button>
+            </form>
+        </div>
+
+        <div class="mini-card action-note">
+            <p class="eyebrow">Support reminder</p>
+            <p>Delete only after the issue is resolved or the conversation has been safely captured elsewhere.</p>
+        </div>
+    </article>
+</section>
+{% else %}
+<section class="panel">
+    {{ ui.empty_state("No enquiry selected", "Pick a message from the inbox filter to read the full enquiry and moderate it.") }}
+</section>
+{% endif %}
+
+<section class="panel">
+    {{ ui.section_header("Log", "Enquiry table", "Scan sender details, state, and timing across the current inbox view.") }}
+
+    {% if enquiries %}
+    <div class="table-shell">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Message</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for enquiry in enquiries %}
+                <tr>
+                    <td data-label="Name">{{ enquiry.name }}</td>
+                    <td data-label="Email">{{ enquiry.email }}</td>
+                    <td data-label="Phone">{{ enquiry.phone or "Not provided" }}</td>
+                    <td data-label="Status">{{ ui.status_badge(enquiry.status) }}</td>
+                    <td data-label="Message">{{ enquiry.message|truncate(72) }}</td>
+                    <td data-label="Created">{{ enquiry.created_at|datetimefmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {{ ui.empty_state("No enquiries in this view", "Switch to another inbox view or reset the filter to bring messages back into the queue.") }}
+    {% endif %}
+</section>
+{% endblock %}
